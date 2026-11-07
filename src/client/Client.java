@@ -1,46 +1,52 @@
-
 package client;
 
-import java.io.*;
-import java.net.*;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.Socket;
+import java.util.Scanner;
+
+import operation.Operation;
 
 public class Client {
 
     public static void main(String[] args) {
 
         try {
+            Socket socket = new Socket("localhost", 1234);
 
-            // Etape 1 : Adresse IP du serveur
-            InetAddress adresseServeur =
-                    InetAddress.getByName("localhost");
+            ObjectOutputStream out =
+                    new ObjectOutputStream(socket.getOutputStream());
+            out.flush();
 
-            // Etape 2 : Creation de l'adresse socket
-            InetSocketAddress adresseSocket =
-                    new InetSocketAddress(adresseServeur, 1234);
+            ObjectInputStream in =
+                    new ObjectInputStream(socket.getInputStream());
 
-            // Etape 3 : Connexion au serveur
-            Socket socket = new Socket();
+            Scanner clavier = new Scanner(System.in);
 
-            socket.connect(adresseSocket);
+            System.out.print("Premier opérande : ");
+            double a = clavier.nextDouble();
 
-            System.out.println("Connecté au serveur");
+            System.out.print("Opérateur (+, -, *, /) : ");
+            char operateur = clavier.next().charAt(0);
 
-            // Etape 4 : Reception du numero
-            BufferedReader in = new BufferedReader(
-                    new InputStreamReader(socket.getInputStream())
-            );
+            System.out.print("Deuxième opérande : ");
+            double b = clavier.nextDouble();
 
-            String message = in.readLine();
+            Operation op = new Operation(a, operateur, b);
 
-            System.out.println("Message du serveur : " + message);
+            out.writeObject(op);
+            out.flush();
 
-            // Etape 5 : Fermeture
+            Double resultat = (Double) in.readObject();
+
+            System.out.println("Résultat reçu du serveur : "
+                    + resultat);
+
             socket.close();
 
-        } catch (IOException e) {
-
+        } catch (IOException | ClassNotFoundException e) {
             System.out.println("Erreur client : " + e.getMessage());
-
         }
     }
 }

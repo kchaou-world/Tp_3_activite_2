@@ -1,44 +1,87 @@
-
 package serveur;
 
-import java.io.*;
-import java.net.*;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.Socket;
+
+import operation.Operation;
 
 public class ClientProcess extends Thread {
 
-    Socket socket;
-    int numeroClient;
+    private Socket socket;
 
-    // Constructeur
-    public ClientProcess(Socket socket, int numeroClient) {
-
+    public ClientProcess(Socket socket) {
         this.socket = socket;
-        this.numeroClient = numeroClient;
-
     }
 
     public void run() {
-
         try {
+            ObjectOutputStream out =
+                    new ObjectOutputStream(socket.getOutputStream());
+            out.flush();
 
-            // Etape 1 : Creation du flux de sortie
-            PrintWriter out = new PrintWriter(
-                    socket.getOutputStream(), true
-            );
+            ObjectInputStream in =
+                    new ObjectInputStream(socket.getInputStream());
 
-            // Etape 2 : Envoyer le numero au client
-            out.println("Vous êtes le client n°" + numeroClient);
+            Operation op = (Operation) in.readObject();
 
-            System.out.println("Numero envoyé au client n°" + numeroClient);
+            double a = op.getOperande1();
+            double b = op.getOperande2();
+            char operateur = op.getOperateur();
 
-            // Etape 3 : Fermeture de la connexion
-            socket.close();
+            double resultat = 0;
 
-        } catch (IOException e) {
+            switch (operateur) {
+                case '+':
+                    resultat = a + b;
+                    break;
 
-            System.out.println("Erreur client n°" +
-                    numeroClient + " : " + e.getMessage());
+                case '-':
+                    resultat = a - b;
+                    break;
 
+                case '*':
+                    resultat = a * b;
+                    break;
+
+                case '/':
+                    if (b == 0) {
+                        throw new ArithmeticException("Division par zéro");
+                    }
+                    resultat = a / b;
+                    break;
+
+                default:
+                    throw new IllegalArgumentException("Opérateur invalide");
+            }
+
+            int nombreOperations =
+                    ServeurMT.incrementerCompteur();
+
+            System.out.println("Opération : " + a + " "
+                    + operateur + " " + b);
+
+            System.out.println("Résultat : " + resultat);
+
+            System.out.println("Nombre total d'opérations : "
+                    + nombreOperations);
+
+            out.writeObject(Double.valueOf(resultat));
+            out.flush();
+
+        } catch (IOException | ClassNotFoundException
+                 | ArithmeticException | IllegalArgumentException e) {
+
+            System.out.println("Erreur traitement client : "
+                    + e.getMessage());
+
+        } finally {
+            try {
+                socket.close();
+            } catch (IOException e) {
+                System.out.println("Erreur fermeture socket");
+            }
         }
     }
 }
